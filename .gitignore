@@ -12,5 +12,5 @@ __pycache__/
 db.sqlite3
 
 # Ignorar archivos nativos de Android/iOS
-/famae_app/android/
-/famae_app/ios/
+/android/
+/ios/
