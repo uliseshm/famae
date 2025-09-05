@@ -1,0 +1,16 @@
+# Ignorar carpetas de dependencias
+node_modules/
+.venv/
+
+# Ignorar archivos de configuración del entorno
+.env
+.env.local
+
+# Ignorar archivos temporales y de caché
+__pycache__/
+*.pyc
+db.sqlite3
+
+# Ignorar archivos nativos de Android/iOS
+/fae_app/android/
+/fae_app/ios/
