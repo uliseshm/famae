@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Button, Alert } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
-import { getClients, createClient } from '../services/api';
+import { View, Text, StyleSheet, FlatList, TextInput, Button, Alert, TouchableOpacity } from 'react-native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+import { getClients, createClient, deleteClient } from '../services/api';
 import { getAccessToken } from '../services/AuthService';
 import { IClient, IClientForm } from '../types/ClientTypes';
 
+type ClientEditScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Clients'>;
+
 const ClientsScreen = () => {
     const isFocused = useIsFocused();
+    const navigation = useNavigation<ClientEditScreenNavigationProp>();
     const [clients, setClients] = useState<IClient[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [form, setForm] = useState<IClientForm>({
         nombre: '', apellidos: '', email: '', telefono: '', direccion: '',
-    ciudad: '', estado: '', codigo_postal: '',
+        ciudad: '', estado: '', codigo_postal: '',
     });
 
     useEffect(() => {
@@ -51,12 +57,51 @@ const ClientsScreen = () => {
         }
     };
 
+    const handleDeleteClient = async (id: number) => {
+        Alert.alert(
+            'Confirmar eliminación',
+            '¿Estás seguro de que deseas eliminar este cliente?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Eliminar',
+                    onPress: async () => {
+                        try {
+                            const token = await getAccessToken();
+                            if (token) {
+                                await deleteClient(id, token);
+                                Alert.alert('Éxito', 'Cliente eliminado correctamente.');
+                                fetchClients(); // refresca la lista
+                            }
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const renderClientItem = ({ item }: { item: IClient }) => (
         <View style={styles.clientItem}>
-            <Text style={styles.clientName}>{item.nombre} {item.apellidos}</Text>
-            <Text>Email: {item.email}</Text>
-            <Text>Teléfono: {item.telefono}</Text>
-            <Text>Dirección: {item.direccion}, {item.ciudad}, {item.estado}</Text>
+            <View>
+                <Text style={styles.clientName}>{item.nombre} {item.apellidos}</Text>
+                <Text>Email: {item.email}</Text>
+            </View>
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.editButton]}
+                    onPress={() => navigation.navigate('ClientEdit', { client: item })}
+                >
+                    <Text style={styles.buttonText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.deleteButton]}
+                    onPress={() => handleDeleteClient(item.id)}
+                >
+                    <Text style={styles.buttonText}>Borrar</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -88,12 +133,56 @@ const ClientsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginVertical: 10 },
-  input: { height: 40, borderColor: '#ccc', borderWidth: 1, marginBottom: 10, paddingHorizontal: 10 },
-  clientItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  clientName: { fontWeight: 'bold' },
-  loadingText: { textAlign: 'center', marginTop: 50 },
+    container: {
+        flex: 1,
+        padding: 20
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginVertical: 10
+    },
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingHorizontal: 10
+    },
+    clientName: {
+        fontWeight: 'bold'
+    },
+    loadingText: {
+        textAlign: 'center',
+        marginTop: 50
+    },
+    clientItem: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+    },
+    actionButton: {
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+        marginLeft: 10,
+    },
+    editButton: {
+        backgroundColor: '#3498db',
+    },
+    deleteButton: {
+        backgroundColor: '#e74c3c',
+    },
+    buttonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
 });
 
 export default ClientsScreen;

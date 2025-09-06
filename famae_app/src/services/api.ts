@@ -111,3 +111,34 @@ export const createClient = async (clientData: IClientForm, token: string): Prom
         throw new Error('Ocurrió un error al crear el cliente.');
     }
 };
+
+export const updateClient = async (id: number, clientData: IClientForm, token: string): Promise<IClient> => {
+    try {
+        const response = await api.put(`clientes/${id}/`, clientData, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.data) {
+            throw new Error(JSON.stringify(error.response.data));
+        }
+        throw new Error('Ocurrió un error al actualizar el cliente.');
+    }
+};
+
+export const deleteClient = async (id: number, token: string): Promise<void> => {
+    try {
+        await api.delete(`clientes/${id}/`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.data) {
+            throw new Error(JSON.stringify(error.response.data));
+        }
+        throw new Error('Ocurrió un error al eliminar el cliente.');
+    }
+};
