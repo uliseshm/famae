@@ -1,12 +1,64 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ILoginCredentials, IAuthResponse } from '../types/AuthTypes';
 import { IClient, IClientForm } from '../types/ClientTypes';
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './AuthService';
+
 
 const API_URL = 'http://192.168.1.6:8000/api/';
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
 });
+
+// Interceptor de peticiones: se ejecuta antes de cada llamada
+api.interceptors.request.use(async (config) => {
+  const token = await getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Interceptor de respuestas: se ejecuta cuando se recibe una respuesta
+api.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    async (error) => {
+        const originalRequest = error.config;
+
+        // si el error es 401 y no es una llamada para renovar el token
+        if (error.response.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            const refreshToken = await getRefreshToken();
+
+            if (refreshToken) {
+                try {
+                    // intenta obtener un nuevo token de acceso
+                    const response = await axios.post(`${API_URL}token/refresh/`, {
+                        refresh: refreshToken,
+                    });
+
+                    // guarda los nuevos tokens
+                    await saveTokens(response.data.access, response.data.refresh);
+
+                    // actualiza el header de la peticion original y re-intentala
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+                    return api(originalRequest);
+                } catch (refreshError) {
+                    // si falla la renovacion, borra los tokens y fuerza el re-login
+                    await clearTokens();
+                    // Aquí podrías navegar a la pantalla de login
+                    console.log('Renovación de token fallida. Por favor, vuelva a iniciar sesión.');
+                }
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 
 export const login = async (credentials: ILoginCredentials): Promise<IAuthResponse> => {
     try {
@@ -22,18 +74,27 @@ export const login = async (credentials: ILoginCredentials): Promise<IAuthRespon
     }
 };
 
-export const getClients = async (token: string): Promise<IClient[]> => {
+export const getClients = async (): Promise<any> => {
     try {
-        const response = await api.get('clientes/', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const response = await api.get('clientes/');
         return response.data;
     } catch (error) {
         throw new Error('No se pudieron cargar los clientes.');
     }
-};
+}
+
+// export const getClients = async (token: string): Promise<IClient[]> => {
+//     try {
+//         const response = await api.get('clientes/', {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         throw new Error('No se pudieron cargar los clientes.');
+//     }
+// };
 
 export const createClient = async (clientData: IClientForm, token: string): Promise<IClient> => {
     try {

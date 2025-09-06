@@ -22,6 +22,15 @@ export const getAccessToken = async (): Promise<string | null> => {
     }
 };
 
+export const getRefreshToken = async (): Promise<string | null> => {
+    try {
+        return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    } catch (error) {
+        console.error('Error al obtener el token de refresco:', error);
+        return null;
+    }
+};
+
 export const clearTokens = async () => {
     try {
         await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
